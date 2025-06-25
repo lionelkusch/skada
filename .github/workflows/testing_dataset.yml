@@ -1,0 +1,41 @@
+name: Testing Dataset Loader
+on:  # yamllint disable-line rule:truthy
+  schedule:
+    - cron: '0 0 * * 0'  # Runs every week on Sunday at midnight UTC
+  pull_request:  # for running on PR with name contains '[dataset]'
+    branches:
+      - 'main'
+  workflow_dispatch:  # Allows manual triggering
+
+jobs:
+  Test-dataset:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.13", "3.12"]
+        os: [macos-latest, ubuntu-latest, windows-latest]
+    env:
+      OS: ${{ matrix.os }}
+      PYTHON: ${{ matrix.python-version }}
+    defaults:
+      run:
+        shell: bash -l {0}
+    steps:
+
+    # Install skada
+    - name: Checking Out Repository  # yamllint disable-line rule:indentation
+      uses: actions/checkout@v4
+    - name: install conda
+      uses: conda-incubator/setup-miniconda@v3
+      with:
+        auto-update-conda: true
+        python-version: ${{ matrix.python-version }}
+    - run: which python
+    - name: Install 'skada' package
+      run: |
+        conda install pytorch torchvision skorch -c conda-forge -c pytorch
+        python -m pip install -e .[test]
+    # Run Tests
+    - name: Run Tests without torch
+      run: pytest skada --verbose --cov=skada --cov-report term -m "not dataset"
